@@ -1,6 +1,9 @@
 #include <iostream>
 
 int main(){
-// tes123
+
+// tes
+    printf("HI");
+
     return 0;
 }

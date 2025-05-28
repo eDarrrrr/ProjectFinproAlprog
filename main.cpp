@@ -1,7 +1,9 @@
 #include <iostream>
 
 int main(){
-    printf("Hello World! and git");
+
+// tes
+    printf("HI");
 
     return 0;
 }

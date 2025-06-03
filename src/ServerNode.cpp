@@ -8,6 +8,11 @@
 #include <chrono>
 #include <ctime>
 #include <iomanip>
+#include <map>
+#include <sstream>
+#include <regex>
+#include <algorithm>
+#include <vector>
 
 #pragma comment(lib,"ws2_32.lib")
 #define PORT 8888
@@ -17,6 +22,7 @@ using namespace std;
 vector<SOCKET> client_sockets; // Simpan semua client
 mutex clients_mutex;
 bool server_running = true;
+map<string, string> npm_to_nama;
 
 string getTimestamp() {
     auto now = chrono::system_clock::now();
@@ -25,6 +31,43 @@ string getTimestamp() {
     char buf[32];
     strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", local_tm);
     return string(buf);
+}
+
+void findLogByNPM(const string& npm) {
+    ifstream logfile("log.txt");
+    if (!logfile) {
+        cout << "[Server] Log file belum ada.\n";
+        return;
+    }
+    cout << "\n=== LOG untuk NPM: " << npm << " ===" << endl;
+    string line;
+    bool found = false;
+    regex pattern(".*" + npm + ".*");
+    while (getline(logfile, line)) {
+        if (regex_search(line, pattern)) {
+            cout << line << endl;
+            found = true;
+        }
+    }
+    if (!found) cout << "[Server] Tidak ditemukan log untuk NPM tersebut.\n";
+    cout << "=== END LOG ===\n" << endl;
+}
+
+void loadMahasiswaDB(const string& filename) {
+    ifstream dbfile(filename);
+    if (!dbfile) {
+        cout << "[Server] Database mahasiswa tidak ditemukan.\n";
+        return;
+    }
+    string line;
+    getline(dbfile, line); // skip header
+    while (getline(dbfile, line)) {
+        stringstream ss(line);
+        string npm, nama;
+        getline(ss, npm, ',');
+        getline(ss, nama, ',');
+        npm_to_nama[npm] = nama;
+    }
 }
 
 void logMessage(int client_id, const string& msg) {
@@ -41,8 +84,21 @@ void clientHandler(SOCKET client_socket, int client_id) {
             break;
         }
         buffer[recv_size] = '\0';
-        cout << "[Client " << client_id << "]: " << buffer << endl;
-        logMessage(client_id, buffer);  // <--- LOG di sini
+        string npm = buffer;
+        string balasan;
+        string loginfo;
+        auto it = npm_to_nama.find(npm);
+        if (it != npm_to_nama.end()) {
+            string timestamp = getTimestamp();
+            balasan = "Berhasil absen " + it->second + " (" + npm + ") pada " + timestamp;
+            loginfo = "[ABSEN] [" + timestamp + "] " + npm + " - " + it->second + " BERHASIL absen.";
+        } else {
+            balasan = "NPM tidak terdaftar";
+            loginfo = "[ABSEN] [" + getTimestamp() + "] " + npm + " GAGAL absen (tidak terdaftar).";
+        }
+        send(client_socket, balasan.c_str(), balasan.length(), 0);
+        logMessage(client_id, loginfo); // Catat di log
+        cout << "[Client " << client_id << "]: " << npm << " --> " << balasan << endl;
     }
     closesocket(client_socket);
 
@@ -55,6 +111,7 @@ void clientHandler(SOCKET client_socket, int client_id) {
         }
     }
 }
+
 
 void showLog() {
     ifstream logfile("log.txt");
@@ -80,8 +137,8 @@ void broadcastShutdown() {
 
 void serverCommandPrompt() {
     string cmd;
-    cout << "\n[Server Command] > ";
     while (server_running) {
+        cout << "\n[Server Command] > ";
         getline(cin, cmd);
         if (cmd == "exit" || cmd == "quit") {
             cout << "Shutting down server..." << endl;
@@ -96,18 +153,24 @@ void serverCommandPrompt() {
             int i = 0;
             for (SOCKET s : client_sockets) cout << "  Client ID: " << i++ << " SOCKET: " << s << endl;
         } else if (cmd == "log") {
-            showLog(); // <--- COMMAND LOG
-        } else {
-            cout << "[Server] Command tidak dikenali. Gunakan: list, log, exit/quit" << endl;
+            showLog();
+        } else if (cmd.rfind("find ", 0) == 0) {  // starts with "find "
+            string npm = cmd.substr(5);
+            findLogByNPM(npm);
+        }  else {
+            cout << "[Server] Command tidak dikenali. Gunakan: list, log, find <npm>, exit/quit" << endl;
         }
     }
 }
+
 
 int main() {
     WSADATA wsa;
     SOCKET listen_socket;
     struct sockaddr_in server, client;
     int c = sizeof(struct sockaddr_in);
+
+    loadMahasiswaDB("mahasiswa.csv");
 
     cout << "Initialising Winsock...\n";
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {

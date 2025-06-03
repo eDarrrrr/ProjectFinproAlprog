@@ -78,6 +78,22 @@ void exportLogToJson(const std::string& binFile = "log_harian.bin", const std::s
 
     std::cout << "[Server] Log harian diekspor ke " << jsonFile << std::endl;
 }
+
+void showHelp() {
+    cout << "\n=== DAFTAR COMMAND SERVER ===" << endl;
+    cout << "help                       : Menampilkan daftar command ini\n";
+    cout << "list                       : Melihat client yang terhubung\n";
+    cout << "log                        : Melihat seluruh isi log (text)\n";
+    cout << "find <npm>                 : Cari semua log berdasarkan NPM\n";
+    cout << "addnpm <npm> <nama>        : Tambah mahasiswa baru ke database\n";
+    cout << "exportjson                 : Ekspor log harian biner ke file JSON\n";
+    cout << "resetlog                   : Reset log harian (file biner)\n";
+    cout << "exit / quit                : Menutup server & semua koneksi client\n";
+    cout << "==============================\n" << endl;
+    cout << "Contoh pemakaian:" << endl;
+    cout << "  addnpm 2306266777 Muhammad Ali\n";
+    cout << "  find 2306266777\n";
+}
 void findLogByNPM(const string& npm) {
     ifstream logfile("log.txt");
     if (!logfile) {
@@ -172,6 +188,14 @@ void clientHandler(SOCKET client_socket, int client_id) {
     }
 }
 
+void tambahMahasiswaDB(const string& npm, const string& nama, const string& filename="mahasiswa.csv") {
+    // Tambah ke file csv (append)
+    ofstream dbfile(filename, ios::app);
+    dbfile << npm << "," << nama << endl;
+    dbfile.close();
+    // Tambah juga ke map
+    npm_to_nama[npm] = nama;
+}
 
 void showLog() {
     ifstream logfile("log.txt");
@@ -197,8 +221,9 @@ void broadcastShutdown() {
 
 void serverCommandPrompt() {
     string cmd;
+    cout << "\nKetik help untuk melihat semua command yang ada\n ";
     while (server_running) {
-        cout << "\n[Server Command] > ";
+        cout << "\n>>";
         getline(cin, cmd);
         if (cmd == "exit" || cmd == "quit") {
             cout << "Shutting down server..." << endl;
@@ -219,8 +244,25 @@ void serverCommandPrompt() {
             findLogByNPM(npm);
         }else if (cmd == "exportjson") {
             exportLogToJson();
-        } else {
-            cout << "[Server] Command tidak dikenali. Gunakan: list, log, find <npm>, exit/quit, exportjson" << endl;
+        }else if (cmd.rfind("addnpm ", 0) == 0) { // command mulai dengan "addnpm "
+            istringstream iss(cmd);
+            string perintah, npm, nama;
+            iss >> perintah >> npm;
+            getline(iss, nama); // ambil sisa baris untuk nama
+            // Hilangkan leading space di nama
+            if (!nama.empty() && nama[0] == ' ') nama = nama.substr(1);
+            if (npm.empty() || nama.empty()) {
+                cout << "[Server] Format: addnpm <npm> <nama_mahasiswa>\n";
+            } else {
+                tambahMahasiswaDB(npm, nama);
+                cout << "[Server] Mahasiswa " << nama << " (" << npm << ") berhasil ditambahkan ke database.\n";
+            }
+        } 
+        else if (cmd == "help") {
+            showHelp();
+        }
+        else {
+            cout << "[Server] Command tidak dikenali. Gunakan: help untuk melihat command yang ada" << endl;
         }
     }
 }

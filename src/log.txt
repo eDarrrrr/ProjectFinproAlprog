@@ -26,3 +26,8 @@
 [2025-06-03 23:34:12] Client 0: [ABSEN] [2025-06-03 23:34:12] 2306266792 - Muhamamd Haidar Al Ghifari BERHASIL absen.
 [2025-06-03 23:34:23] Client 0: [ABSEN] [2025-06-03 23:34:23] testhalo GAGAL absen (tidak terdaftar).
 [2025-06-03 23:35:39] Client 1: [ABSEN] [2025-06-03 23:35:39] 2306266792 - Muhamamd Haidar Al Ghifari BERHASIL absen.
+[2025-06-04 00:42:46] Client 0: [ABSEN] [2025-06-04 00:42:46] 23045678 GAGAL absen (tidak terdaftar).
+[2025-06-04 00:42:54] Client 0: [ABSEN] [2025-06-04 00:42:54] 23045678 GAGAL absen (tidak terdaftar).
+[2025-06-04 00:43:22] Client 0: [ABSEN] [2025-06-04 00:43:22] 23045678 GAGAL absen (tidak terdaftar).
+[2025-06-04 00:43:58] Client 0: [ABSEN] [2025-06-04 00:43:58] 23045678 - testing BERHASIL absen.
+[2025-06-04 00:44:27] Client 0: [ABSEN] [2025-06-04 00:44:27] 230666 - testlagi BERHASIL absen.

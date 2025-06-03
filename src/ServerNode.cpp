@@ -13,6 +13,7 @@
 #include <regex>
 #include <algorithm>
 #include <vector>
+#include <fstream>
 
 #pragma comment(lib,"ws2_32.lib")
 #define PORT 8888
@@ -33,6 +34,50 @@ string getTimestamp() {
     return string(buf);
 }
 
+struct LogRecord {
+    char npm[32];
+    char nama[64];
+    char waktu[32];
+    char hasil[16]; // "BERHASIL" / "GAGAL"
+};
+
+void saveLogBiner(const LogRecord& rec, const std::string& filename="log_harian.bin") {
+    std::ofstream out(filename, std::ios::binary | std::ios::app);
+    out.write(reinterpret_cast<const char*>(&rec), sizeof(LogRecord));
+    out.close();
+}
+
+// Fungsi ekspor seluruh log biner ke JSON
+void exportLogToJson(const std::string& binFile = "log_harian.bin", const std::string& jsonFile = "log_harian.json") {
+    std::ifstream in(binFile, std::ios::binary);
+    if (!in) {
+        std::cout << "[Server] Tidak ada log biner.\n";
+        return;
+    }
+    std::vector<LogRecord> logs;
+    LogRecord temp;
+    while (in.read(reinterpret_cast<char*>(&temp), sizeof(LogRecord))) {
+        logs.push_back(temp);
+    }
+    in.close();
+
+    std::ofstream out(jsonFile);
+    out << "[\n";
+    for (size_t i = 0; i < logs.size(); ++i) {
+        out << "  {\n";
+        out << "    \"npm\": \"" << logs[i].npm << "\",\n";
+        out << "    \"nama\": \"" << logs[i].nama << "\",\n";
+        out << "    \"waktu\": \"" << logs[i].waktu << "\",\n";
+        out << "    \"hasil\": \"" << logs[i].hasil << "\"\n";
+        out << "  }";
+        if (i != logs.size() - 1) out << ",";
+        out << "\n";
+    }
+    out << "]";
+    out.close();
+
+    std::cout << "[Server] Log harian diekspor ke " << jsonFile << std::endl;
+}
 void findLogByNPM(const string& npm) {
     ifstream logfile("log.txt");
     if (!logfile) {
@@ -87,17 +132,32 @@ void clientHandler(SOCKET client_socket, int client_id) {
         string npm = buffer;
         string balasan;
         string loginfo;
+        string nama;
+        string timestamp = getTimestamp();
+        string hasil;
+
         auto it = npm_to_nama.find(npm);
         if (it != npm_to_nama.end()) {
-            string timestamp = getTimestamp();
-            balasan = "Berhasil absen " + it->second + " (" + npm + ") pada " + timestamp;
-            loginfo = "[ABSEN] [" + timestamp + "] " + npm + " - " + it->second + " BERHASIL absen.";
+            nama = it->second;
+            hasil = "BERHASIL";
+            balasan = "Berhasil absen " + nama + " (" + npm + ") pada " + timestamp;
+            loginfo = "[ABSEN] [" + timestamp + "] " + npm + " - " + nama + " BERHASIL absen.";
         } else {
+            nama = "";
+            hasil = "GAGAL";
             balasan = "NPM tidak terdaftar";
-            loginfo = "[ABSEN] [" + getTimestamp() + "] " + npm + " GAGAL absen (tidak terdaftar).";
+            loginfo = "[ABSEN] [" + timestamp + "] " + npm + " GAGAL absen (tidak terdaftar).";
         }
         send(client_socket, balasan.c_str(), balasan.length(), 0);
-        logMessage(client_id, loginfo); // Catat di log
+        logMessage(client_id, loginfo);
+
+        LogRecord rec;
+        strncpy(rec.npm, npm.c_str(), sizeof(rec.npm));
+        strncpy(rec.nama, nama.c_str(), sizeof(rec.nama));
+        strncpy(rec.waktu, timestamp.c_str(), sizeof(rec.waktu));
+        strncpy(rec.hasil, hasil.c_str(), sizeof(rec.hasil));
+        saveLogBiner(rec);
+
         cout << "[Client " << client_id << "]: " << npm << " --> " << balasan << endl;
     }
     closesocket(client_socket);
@@ -157,8 +217,10 @@ void serverCommandPrompt() {
         } else if (cmd.rfind("find ", 0) == 0) {  // starts with "find "
             string npm = cmd.substr(5);
             findLogByNPM(npm);
-        }  else {
-            cout << "[Server] Command tidak dikenali. Gunakan: list, log, find <npm>, exit/quit" << endl;
+        }else if (cmd == "exportjson") {
+            exportLogToJson();
+        } else {
+            cout << "[Server] Command tidak dikenali. Gunakan: list, log, find <npm>, exit/quit, exportjson" << endl;
         }
     }
 }

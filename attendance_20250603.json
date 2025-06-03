@@ -1,52 +1,8 @@
 [
   {
     "npm": "2306203381",
-    "timestamp": "2025-06-03 21:12:10",
-    "action": "Masuk"
-  },
-  {
-    "npm": "2306203381",
-    "timestamp": "2025-06-03 21:12:27",
-    "action": "Keluar"
-  },
-  {
-    "npm": "2306203381",
-    "timestamp": "2025-06-03 21:13:31",
-    "action": "Masuk"
-  },
-  {
-    "npm": "2306203381",
-    "timestamp": "2025-06-03 21:13:36",
-    "action": "Keluar"
-  },
-  {
-    "npm": "2306203381",
-    "timestamp": "2025-06-03 21:22:26",
-    "action": "Masuk"
-  },
-  {
-    "npm": "2316213139",
-    "timestamp": "2025-06-03 21:23:21",
-    "action": "Masuk"
-  },
-  {
-    "npm": "2306203381",
-    "timestamp": "2025-06-03 21:24:19",
-    "action": "Keluar"
-  },
-  {
-    "npm": "2306203381",
-    "timestamp": "2025-06-03 21:30:49",
-    "action": "Masuk"
-  },
-  {
-    "npm": "2306203381",
-    "timestamp": "2025-06-03 21:31:43",
-    "action": "Keluar"
-  },
-  {
-    "npm": "2306203381",
-    "timestamp": "2025-06-03 21:32:03",
+    "name": "Andi Susanto",
+    "timestamp": "2025-06-03 23:06:09",
     "action": "Masuk"
   }
 ]

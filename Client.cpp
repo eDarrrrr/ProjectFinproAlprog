@@ -1,4 +1,4 @@
-
+// Client.cpp
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include "Common.h"
 #include <winsock2.h>
@@ -6,7 +6,7 @@
 #include <iostream>
 #include <string>
 #include <ctime>
-#include <cstring>     
+#include <cstring>     // untuk memset, memcpy
 
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -21,7 +21,7 @@ int main() {
         return 1;
     }
 
-    
+    // 1) Input NPM
     std::string studentNPM;
     std::cout << "Masukkan NPM Mahasiswa (max " << (MAX_NPM_LEN - 1) << " karakter): ";
     std::getline(std::cin, studentNPM);
@@ -36,14 +36,14 @@ int main() {
         return 1;
     }
 
-    
+    // Siapkan LogEntry (hanya npm & timestamp)
     LogEntry entry{};
     std::memset(entry.npm, 0, sizeof(entry.npm));
     std::memcpy(entry.npm, studentNPM.c_str(), studentNPM.size());
     std::time_t now = std::time(nullptr);
     entry.timestamp = static_cast<std::int64_t>(now);
 
-    
+    // Buat socket dan connect ke server
     SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (sock == INVALID_SOCKET) {
         std::cerr << "[Error] Gagal membuat socket: " << WSAGetLastError() << "\n";
@@ -51,13 +51,11 @@ int main() {
         return 1;
     }
 
-    
     sockaddr_in serverHint{};
     serverHint.sin_family = AF_INET;
     inet_pton(AF_INET, SERVER_ADDR, &serverHint.sin_addr);
     serverHint.sin_port = htons(SERVER_PORT);
 
-    
     if (connect(sock, reinterpret_cast<sockaddr*>(&serverHint), sizeof(serverHint)) == SOCKET_ERROR) {
         std::cerr << "[Error] Gagal connect ke server: " << WSAGetLastError() << "\n";
         closesocket(sock);
@@ -65,7 +63,7 @@ int main() {
         return 1;
     }
 
-    
+    // Kirim LogEntry (npm & timestamp)
     int sendResult = send(sock, reinterpret_cast<const char*>(&entry), static_cast<int>(sizeof(LogEntry)), 0);
     if (sendResult == SOCKET_ERROR) {
         std::cerr << "[Error] Gagal mengirim data: " << WSAGetLastError() << "\n";
@@ -73,11 +71,12 @@ int main() {
         WSACleanup();
         return 1;
     }
-    std::cout << "[Client] Mengirim scan: NPM=" << entry.npm << ", timestamp=" << entry.timestamp << "\n";
+    std::cout << "[Client] Mengirim scan: NPM=" << entry.npm
+              << ", timestamp=" << entry.timestamp << "\n";
 
-    
-    char buf[16];
-    int bytesIn = recv(sock, buf, 16, 0);
+    // Terima balasan dari server (bisa "OK" atau "ERROR: ...")
+    char buf[128];
+    int bytesIn = recv(sock, buf, 127, 0);
     if (bytesIn > 0) {
         buf[bytesIn] = '\0';
         std::cout << "[Client] Menerima dari server: " << buf << "\n";

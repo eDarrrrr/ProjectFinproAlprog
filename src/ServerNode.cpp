@@ -4,6 +4,10 @@
 #include <string>
 #include <mutex>
 #include <winsock2.h>
+#include <fstream>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
 
 #pragma comment(lib,"ws2_32.lib")
 #define PORT 8888
@@ -13,6 +17,20 @@ using namespace std;
 vector<SOCKET> client_sockets; // Simpan semua client
 mutex clients_mutex;
 bool server_running = true;
+
+string getTimestamp() {
+    auto now = chrono::system_clock::now();
+    time_t t_now = chrono::system_clock::to_time_t(now);
+    tm* local_tm = localtime(&t_now);
+    char buf[32];
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", local_tm);
+    return string(buf);
+}
+
+void logMessage(int client_id, const string& msg) {
+    ofstream logfile("log.txt", ios::app); // append mode
+    logfile << "[" << getTimestamp() << "] Client " << client_id << ": " << msg << endl;
+}
 
 void clientHandler(SOCKET client_socket, int client_id) {
     char buffer[1024];
@@ -24,6 +42,7 @@ void clientHandler(SOCKET client_socket, int client_id) {
         }
         buffer[recv_size] = '\0';
         cout << "[Client " << client_id << "]: " << buffer << endl;
+        logMessage(client_id, buffer);  // <--- LOG di sini
     }
     closesocket(client_socket);
 
@@ -37,15 +56,37 @@ void clientHandler(SOCKET client_socket, int client_id) {
     }
 }
 
+void showLog() {
+    ifstream logfile("log.txt");
+    if (!logfile) {
+        cout << "[Server] Log file belum ada.\n";
+        return;
+    }
+    cout << "\n=== LOG PESAN ===" << endl;
+    string line;
+    while (getline(logfile, line)) {
+        cout << line << endl;
+    }
+    cout << "=== END LOG ===\n" << endl;
+}
+
+void broadcastShutdown() {
+    string shutdownMsg = "Server shutting down, you will be disconnected";
+    lock_guard<mutex> lock(clients_mutex);
+    for (SOCKET s : client_sockets) {
+        send(s, shutdownMsg.c_str(), shutdownMsg.length(), 0);
+    }
+}
+
 void serverCommandPrompt() {
     string cmd;
+    cout << "\n[Server Command] > ";
     while (server_running) {
-        cout << "\n[Server Command] > ";
         getline(cin, cmd);
         if (cmd == "exit" || cmd == "quit") {
             cout << "Shutting down server..." << endl;
             server_running = false;
-            // Tutup semua koneksi client
+            broadcastShutdown();
             lock_guard<mutex> lock(clients_mutex);
             for (SOCKET s : client_sockets) closesocket(s);
             break;
@@ -54,8 +95,10 @@ void serverCommandPrompt() {
             cout << "[Server] Clients connected: " << client_sockets.size() << endl;
             int i = 0;
             for (SOCKET s : client_sockets) cout << "  Client ID: " << i++ << " SOCKET: " << s << endl;
+        } else if (cmd == "log") {
+            showLog(); // <--- COMMAND LOG
         } else {
-            cout << "[Server] Command tidak dikenali. Gunakan: list, exit/quit" << endl;
+            cout << "[Server] Command tidak dikenali. Gunakan: list, log, exit/quit" << endl;
         }
     }
 }

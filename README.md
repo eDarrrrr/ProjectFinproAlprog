@@ -7,11 +7,12 @@ Anggota:
 - Muhammad Hafizh Nurian - 2306211881
 
 Cara Compile
-Server dan Client C++:
-g++ -o servernode.exe servernode.cpp -lws2_32
-g++ -o clientnode.exe clientnode.cpp -lws2_32
+- g++ -o servernode.exe servernode.cpp -lws2_32
+- g++ -o clientnode.exe clientnode.cpp -lws2_32
+
 
 Untuk file ClientNodeCamera.py harus memakai library python OpenCV dan ZBar, cara installnya:
-pip install opencv-python pyzbar
+- pip install opencv-python pyzbar
+
 lalu run
-python kamera_barcode.py
+- python kamera_barcode.py

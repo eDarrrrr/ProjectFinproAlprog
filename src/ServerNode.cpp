@@ -88,6 +88,7 @@ void findLogByNPM(const string& npm) {
     string line;
     bool found = false;
     regex pattern(".*" + npm + ".*");
+
     while (getline(logfile, line)) {
         if (regex_search(line, pattern)) {
             cout << line << endl;
@@ -287,3 +288,4 @@ int main() {
     cout << "Server shut down." << endl;
     return 0;
 }
+

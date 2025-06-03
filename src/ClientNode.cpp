@@ -1,37 +1,12 @@
 #include <iostream>
-#include <thread>
 #include <string>
 #include <winsock2.h>
+#pragma comment(lib,"ws2_32.lib")
 
 #define SERVER "127.0.0.1"
 #define PORT 8888
 
 using namespace std;
-
-void receiveThread(SOCKET sock) {
-    char buffer[1024];
-    while (true) {
-        int recv_size = recv(sock, buffer, sizeof(buffer) - 1, 0);
-        if (recv_size <= 0) {
-            cout << "\n[INFO] Server disconnected or error.\n";
-            break;
-        }
-        buffer[recv_size] = '\0';
-        cout << "\n[Server]: " << buffer << endl;
-        cout << ">> ";
-        cout.flush();
-    }
-}
-
-void sendThread(SOCKET sock) {
-    string input;
-    while (true) {
-        cout << ">> ";
-        getline(cin, input);
-        if (input == "/exit") break;
-        send(sock, input.c_str(), input.length(), 0);
-    }
-}
 
 int main() {
     WSADATA wsa;
@@ -63,15 +38,16 @@ int main() {
     }
     cout << "Connected to server.\n";
 
-    // Mulai dua thread: menerima dan mengirim
-    thread t_recv(receiveThread, client_socket);
-    thread t_send(sendThread, client_socket);
+    string input;
+    while (true) {
+        cout << "[CLIENT] > ";
+        getline(cin, input);
+        if (input == "/exit") break;
+        send(client_socket, input.c_str(), input.length(), 0);
+    }
 
-    t_send.join();
     closesocket(client_socket);
-    t_recv.join();
-
     WSACleanup();
-    cout << "Client shut down.\n";
+    cout << "Client shutdown.\n";
     return 0;
 }

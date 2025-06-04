@@ -44,7 +44,6 @@ Anggota:
 | `list`                   | Daftar client yang terhubung                  |
 | `log`                    | Lihat log absensi (teks)                      |
 | `find <npm>`             | Cari log berdasar NPM                         |
-| `sort <npm>`             | Lihat kunjungan NPM urut waktu                |
 | `addnpm <npm> <nama>`    | Tambah mahasiswa ke database                  |
 | `exportjson`             | Ekspor log biner ke JSON                      |
 | `resetlog`               | Reset log harian biner                        |

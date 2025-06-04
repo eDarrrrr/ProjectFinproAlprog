@@ -6,13 +6,56 @@ Anggota:
 - Raja Juan Ready - 2306220431
 - Muhammad Hafizh Nurian - 2306211881
 
-Cara Compile
-- g++ -o servernode.exe servernode.cpp -lws2_32
-- g++ -o clientnode.exe clientnode.cpp -lws2_32
+## Langkah-langkah Menjalankan
 
+1. **Build Project Otomatis**
+   - **Jalankan** `build.bat`  
+     (klik dua kali atau via terminal di root folder project)
 
-Untuk file ClientNodeCamera.py harus memakai library python OpenCV dan ZBar, cara installnya:
-- pip install opencv-python pyzbar
+2. **Jalankan Server**
+   - Buka terminal/cmd di folder utama project
+   - Jalankan:
+     ```
+     server.exe
+     ```
 
-lalu run
-- python kamera_barcode.py
+3. **Jalankan Client**
+   - Bisa dijalankan beberapa kali di komputer berbeda/terminal berbeda:
+     ```
+     client.exe
+     ```
+
+4. **(Opsional) Jalankan Client Barcode Kamera (Python)**
+   - Pastikan sudah install dependensi:
+     ```
+     pip install opencv-python pyzbar
+     ```
+   - Jalankan:
+     ```
+     python ClientNodeCamera.py
+     ```
+
+---
+
+## Daftar Command di Server
+
+| Command                  | Fungsi                                        |
+|--------------------------|-----------------------------------------------|
+| `help`                   | Lihat daftar command dan penjelasannya        |
+| `list`                   | Daftar client yang terhubung                  |
+| `log`                    | Lihat log absensi (teks)                      |
+| `find <npm>`             | Cari log berdasar NPM                         |
+| `sort <npm>`             | Lihat kunjungan NPM urut waktu                |
+| `addnpm <npm> <nama>`    | Tambah mahasiswa ke database                  |
+| `exportjson`             | Ekspor log biner ke JSON                      |
+| `resetlog`               | Reset log harian biner                        |
+| `exit` / `quit`          | Tutup server dan koneksi client               |
+
+---
+
+**Catatan:**  
+- Semua perintah dijalankan dari folder utama (bukan dari folder src).
+- Jalankan `build.bat` setiap kali selesai mengedit kode sumber di src supaya semua file hasil build & data terbaru ada di luar src.
+- Client Python untuk barcode hanya opsional, bisa dipakai jika ingin absen via scan kamera.
+
+---

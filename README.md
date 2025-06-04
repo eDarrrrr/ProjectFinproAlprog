@@ -13,7 +13,6 @@ Anggota:
      (klik dua kali atau via terminal di root folder project)
 
 2. **Jalankan Server**
-   - Buka terminal/cmd di folder utama project
    - Jalankan:
      ```
      server.exe

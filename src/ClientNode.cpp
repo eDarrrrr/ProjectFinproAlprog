@@ -65,7 +65,7 @@ int main() {
 
     string input;
     while (running) {
-        cout << "[CLIENT] > ";
+        cout << "[Berikan NPM] > ";
         getline(cin, input);
         if (!running || input == "/exit") break;
         send(client_socket, input.c_str(), input.length(), 0);

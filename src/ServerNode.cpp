@@ -8,6 +8,12 @@
 #include <chrono>
 #include <ctime>
 #include <iomanip>
+#include <map>
+#include <sstream>
+#include <regex>
+#include <algorithm>
+#include <vector>
+#include <fstream>
 
 #pragma comment(lib,"ws2_32.lib")
 #define PORT 8888
@@ -17,6 +23,7 @@ using namespace std;
 vector<SOCKET> client_sockets; // Simpan semua client
 mutex clients_mutex;
 bool server_running = true;
+map<string, string> npm_to_nama;
 
 string getTimestamp() {
     auto now = chrono::system_clock::now();
@@ -25,6 +32,103 @@ string getTimestamp() {
     char buf[32];
     strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", local_tm);
     return string(buf);
+}
+
+struct LogRecord {
+    char npm[32];
+    char nama[64];
+    char waktu[32];
+    char hasil[16]; // "BERHASIL" / "GAGAL"
+};
+
+void saveLogBiner(const LogRecord& rec, const std::string& filename="log_harian.bin") {
+    std::ofstream out(filename, std::ios::binary | std::ios::app);
+    out.write(reinterpret_cast<const char*>(&rec), sizeof(LogRecord));
+    out.close();
+}
+
+// Fungsi ekspor seluruh log biner ke JSON
+void exportLogToJson(const std::string& binFile = "log_harian.bin", const std::string& jsonFile = "log_harian.json") {
+    std::ifstream in(binFile, std::ios::binary);
+    if (!in) {
+        std::cout << "[Server] Tidak ada log biner.\n";
+        return;
+    }
+    std::vector<LogRecord> logs;
+    LogRecord temp;
+    while (in.read(reinterpret_cast<char*>(&temp), sizeof(LogRecord))) {
+        logs.push_back(temp);
+    }
+    in.close();
+
+    std::ofstream out(jsonFile);
+    out << "[\n";
+    for (size_t i = 0; i < logs.size(); ++i) {
+        out << "  {\n";
+        out << "    \"npm\": \"" << logs[i].npm << "\",\n";
+        out << "    \"nama\": \"" << logs[i].nama << "\",\n";
+        out << "    \"waktu\": \"" << logs[i].waktu << "\",\n";
+        out << "    \"hasil\": \"" << logs[i].hasil << "\"\n";
+        out << "  }";
+        if (i != logs.size() - 1) out << ",";
+        out << "\n";
+    }
+    out << "]";
+    out.close();
+
+    std::cout << "[Server] Log harian diekspor ke " << jsonFile << std::endl;
+}
+
+void showHelp() {
+    cout << "\n=== DAFTAR COMMAND SERVER ===" << endl;
+    cout << "help                       : Menampilkan daftar command ini\n";
+    cout << "list                       : Melihat client yang terhubung\n";
+    cout << "log                        : Melihat seluruh isi log (text)\n";
+    cout << "find <npm>                 : Cari semua log berdasarkan NPM\n";
+    cout << "addnpm <npm> <nama>        : Tambah mahasiswa baru ke database\n";
+    cout << "exportjson                 : Ekspor log harian biner ke file JSON\n";
+    cout << "resetlog                   : Reset log harian (file biner)\n";
+    cout << "exit / quit                : Menutup server & semua koneksi client\n";
+    cout << "==============================\n" << endl;
+    cout << "Contoh pemakaian:" << endl;
+    cout << "  addnpm 2306266777 Muhammad Ali\n";
+    cout << "  find 2306266777\n";
+}
+void findLogByNPM(const string& npm) {
+    ifstream logfile("log.txt");
+    if (!logfile) {
+        cout << "[Server] Log file belum ada.\n";
+        return;
+    }
+    cout << "\n=== LOG untuk NPM: " << npm << " ===" << endl;
+    string line;
+    bool found = false;
+    regex pattern(".*" + npm + ".*");
+    while (getline(logfile, line)) {
+        if (regex_search(line, pattern)) {
+            cout << line << endl;
+            found = true;
+        }
+    }
+    if (!found) cout << "[Server] Tidak ditemukan log untuk NPM tersebut.\n";
+    cout << "=== END LOG ===\n" << endl;
+}
+
+void loadMahasiswaDB(const string& filename) {
+    ifstream dbfile(filename);
+    if (!dbfile) {
+        cout << "[Server] Database mahasiswa tidak ditemukan.\n";
+        return;
+    }
+    string line;
+    getline(dbfile, line); // skip header
+    while (getline(dbfile, line)) {
+        stringstream ss(line);
+        string npm, nama;
+        getline(ss, npm, ',');
+        getline(ss, nama, ',');
+        npm_to_nama[npm] = nama;
+    }
 }
 
 void logMessage(int client_id, const string& msg) {
@@ -41,8 +145,36 @@ void clientHandler(SOCKET client_socket, int client_id) {
             break;
         }
         buffer[recv_size] = '\0';
-        cout << "[Client " << client_id << "]: " << buffer << endl;
-        logMessage(client_id, buffer);  // <--- LOG di sini
+        string npm = buffer;
+        string balasan;
+        string loginfo;
+        string nama;
+        string timestamp = getTimestamp();
+        string hasil;
+
+        auto it = npm_to_nama.find(npm);
+        if (it != npm_to_nama.end()) {
+            nama = it->second;
+            hasil = "BERHASIL";
+            balasan = "Berhasil absen " + nama + " (" + npm + ") pada " + timestamp;
+            loginfo = "[ABSEN] [" + timestamp + "] " + npm + " - " + nama + " BERHASIL absen.";
+        } else {
+            nama = "";
+            hasil = "GAGAL";
+            balasan = "NPM tidak terdaftar";
+            loginfo = "[ABSEN] [" + timestamp + "] " + npm + " GAGAL absen (tidak terdaftar).";
+        }
+        send(client_socket, balasan.c_str(), balasan.length(), 0);
+        logMessage(client_id, loginfo);
+
+        LogRecord rec;
+        strncpy(rec.npm, npm.c_str(), sizeof(rec.npm));
+        strncpy(rec.nama, nama.c_str(), sizeof(rec.nama));
+        strncpy(rec.waktu, timestamp.c_str(), sizeof(rec.waktu));
+        strncpy(rec.hasil, hasil.c_str(), sizeof(rec.hasil));
+        saveLogBiner(rec);
+
+        cout << "[Client " << client_id << "]: " << npm << " --> " << balasan << endl;
     }
     closesocket(client_socket);
 
@@ -54,6 +186,15 @@ void clientHandler(SOCKET client_socket, int client_id) {
             break;
         }
     }
+}
+
+void tambahMahasiswaDB(const string& npm, const string& nama, const string& filename="mahasiswa.csv") {
+    // Tambah ke file csv (append)
+    ofstream dbfile(filename, ios::app);
+    dbfile << npm << "," << nama << endl;
+    dbfile.close();
+    // Tambah juga ke map
+    npm_to_nama[npm] = nama;
 }
 
 void showLog() {
@@ -80,8 +221,9 @@ void broadcastShutdown() {
 
 void serverCommandPrompt() {
     string cmd;
-    cout << "\n[Server Command] > ";
+    cout << "\nKetik help untuk melihat semua command yang ada\n ";
     while (server_running) {
+        cout << "\n>>";
         getline(cin, cmd);
         if (cmd == "exit" || cmd == "quit") {
             cout << "Shutting down server..." << endl;
@@ -96,18 +238,43 @@ void serverCommandPrompt() {
             int i = 0;
             for (SOCKET s : client_sockets) cout << "  Client ID: " << i++ << " SOCKET: " << s << endl;
         } else if (cmd == "log") {
-            showLog(); // <--- COMMAND LOG
-        } else {
-            cout << "[Server] Command tidak dikenali. Gunakan: list, log, exit/quit" << endl;
+            showLog();
+        } else if (cmd.rfind("find ", 0) == 0) {  // starts with "find "
+            string npm = cmd.substr(5);
+            findLogByNPM(npm);
+        }else if (cmd == "exportjson") {
+            exportLogToJson();
+        }else if (cmd.rfind("addnpm ", 0) == 0) { // command mulai dengan "addnpm "
+            istringstream iss(cmd);
+            string perintah, npm, nama;
+            iss >> perintah >> npm;
+            getline(iss, nama); // ambil sisa baris untuk nama
+            // Hilangkan leading space di nama
+            if (!nama.empty() && nama[0] == ' ') nama = nama.substr(1);
+            if (npm.empty() || nama.empty()) {
+                cout << "[Server] Format: addnpm <npm> <nama_mahasiswa>\n";
+            } else {
+                tambahMahasiswaDB(npm, nama);
+                cout << "[Server] Mahasiswa " << nama << " (" << npm << ") berhasil ditambahkan ke database.\n";
+            }
+        } 
+        else if (cmd == "help") {
+            showHelp();
+        }
+        else {
+            cout << "[Server] Command tidak dikenali. Gunakan: help untuk melihat command yang ada" << endl;
         }
     }
 }
+
 
 int main() {
     WSADATA wsa;
     SOCKET listen_socket;
     struct sockaddr_in server, client;
     int c = sizeof(struct sockaddr_in);
+
+    loadMahasiswaDB("mahasiswa.csv");
 
     cout << "Initialising Winsock...\n";
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {

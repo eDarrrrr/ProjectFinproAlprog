@@ -36,7 +36,7 @@ while True:
         cv2.waitKey(2000)  # delay supaya tidak kirim berkali-kali
         break
 
-    cv2.imshow('Barcode Scanner', eq)
+    cv2.imshow('Barcode Scanner', frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
